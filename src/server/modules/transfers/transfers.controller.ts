@@ -1,24 +1,25 @@
-import { Controller, Post, Body, Req, UseGuards, Headers } from '@nestjs/common';
+import { Controller, Post, Body, Req, UseGuards, Headers, Inject } from '@nestjs/common';
 import { TransfersService } from './transfers.service';
-import { AuthGuard } from '@nestjs/passport';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { TransferDto } from './dto/transfer.dto';
 
-@Controller('transfers')
+@Controller('api/v1/transfers')
+@UseGuards(JwtAuthGuard)
 export class TransfersController {
-  constructor(private transfersService: TransfersService) {}
+  constructor(@Inject(TransfersService) private transfersService: TransfersService) {}
 
-  @UseGuards(AuthGuard('jwt'))
   @Post('p2p')
   async p2pTransfer(
-    @Body() body: { receiverAccountId: string; amountCentimes: number; reference?: string },
+    @Body() transferDto: TransferDto,
     @Req() req: any,
     @Headers('idempotency-key') idempotencyKey: string,
   ) {
     return this.transfersService.transfer({
       senderAccountId: req.user.accountId, // Assume this is populated by a strategy
-      receiverAccountId: body.receiverAccountId,
-      amountCentimes: body.amountCentimes,
+      receiverAccountId: transferDto.receiverAccountId,
+      amountCentimes: transferDto.amountCentimes,
       type: 'P2P',
-      reference: body.reference,
+      reference: transferDto.reference,
       idempotencyKey,
     });
   }

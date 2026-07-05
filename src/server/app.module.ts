@@ -7,15 +7,17 @@ import { LedgerModule } from './modules/ledger/ledger.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: process.env.SQL_HOST,
-      port: 5432,
-      username: process.env.SQL_USER,
-      password: process.env.SQL_PASSWORD,
-      database: process.env.SQL_DB_NAME,
-      autoLoadEntities: true,
-      synchronize: false, // Use migrations in production
+    TypeOrmModule.forRootAsync({
+      useFactory: () => ({
+        type: 'postgres',
+        host: process.env.DB_HOST,
+        port: parseInt(process.env.DB_PORT || '5432', 10),
+        username: process.env.DB_USER,
+        password: process.env.DB_PASS,
+        database: process.env.DB_NAME,
+        autoLoadEntities: true,
+        synchronize: false, // Disable synchronize to avoid permission errors
+      }),
     }),
     AuthModule,
     AccountsModule,

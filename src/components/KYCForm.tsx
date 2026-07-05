@@ -63,6 +63,7 @@ const KYCForm: React.FC<KYCFormProps> = ({ onSuccess }) => {
     setStatus('uploading');
     
     // Simulate API call
+    // TODO: Wire to backend KYC endpoint when implemented.
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     setStatus('success');

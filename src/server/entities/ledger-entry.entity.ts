@@ -19,7 +19,7 @@ export class LedgerEntry {
   @Column({ type: 'bigint' })
   amount: number;
 
-  @Column({ type: 'bigint' })
+  @Column({ name: 'balanceafter', type: 'bigint' })
   balanceAfter: number;
 
   @CreateDateColumn()

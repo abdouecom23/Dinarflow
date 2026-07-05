@@ -5,9 +5,17 @@ import MerchantDashboard from './views/merchant/MerchantDashboard';
 import AdminDashboard from './views/admin/AdminDashboard';
 import SignupPage from './views/auth/SignupPage';
 import LoginPage from './views/auth/LoginPage';
+import React from 'react';
 
-// Mock Auth Check (Replace with real logic later)
-const isAuthenticated = true; 
+import { getAuthToken } from './lib/api';
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const token = getAuthToken();
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return <>{children}</>;
+};
 
 export default function App() {
   return (
@@ -19,19 +27,19 @@ export default function App() {
         {/* User Portal */}
         <Route 
           path="/dashboard/*" 
-          element={isAuthenticated ? <UserDashboard /> : <Navigate to="/login" />} 
+          element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} 
         />
 
         {/* Merchant Portal */}
         <Route 
           path="/merchant/*" 
-          element={isAuthenticated ? <MerchantDashboard /> : <Navigate to="/login" />} 
+          element={<ProtectedRoute><MerchantDashboard /></ProtectedRoute>} 
         />
 
         {/* Admin Portal */}
         <Route 
           path="/admin/*" 
-          element={isAuthenticated ? <AdminDashboard /> : <Navigate to="/login" />} 
+          element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} 
         />
 
         {/* Auth Routes */}

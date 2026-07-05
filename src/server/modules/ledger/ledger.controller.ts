@@ -1,17 +1,26 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards, Req, ForbiddenException, Inject } from '@nestjs/common';
 import { LedgerService } from './ledger.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { UserRole } from '../../../types';
 
-@Controller('v1/ledger')
+@Controller('api/v1/ledger')
+@UseGuards(JwtAuthGuard)
 export class LedgerController {
-  constructor(private readonly ledgerService: LedgerService) {}
+  constructor(@Inject(LedgerService) private readonly ledgerService: LedgerService) {}
 
   @Get('account/:id')
-  async getByAccount(@Param('id') id: string) {
+  async getByAccount(@Param('id') id: string, @Req() req: any) {
+    if (req.user.role !== UserRole.ADMIN && req.user.accountId !== id) {
+      throw new ForbiddenException('You can only view your own ledger entries');
+    }
     return this.ledgerService.findByAccountId(id);
   }
 
   @Get('recent')
-  async getRecent() {
+  async getRecent(@Req() req: any) {
+    if (req.user.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Only admins can view recent global activity');
+    }
     return this.ledgerService.getRecentActivity();
   }
 }

@@ -13,7 +13,8 @@ import {
   CreditCard,
   ShieldCheck
 } from 'lucide-react';
-
+import { v4 as uuidv4 } from 'uuid';
+import { apiRequest } from '../../lib/api';
 import KYCForm from '../../components/KYCForm';
 
 interface AccountData {
@@ -41,17 +42,19 @@ const UserDashboard: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
+  const fetchAccount = async () => {
+    try {
+      const data = await apiRequest('/api/v1/accounts/me');
+      setData(data);
+    } catch (err) {
+      console.error('Failed to fetch:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetch('/api/v1/accounts/me')
-      .then((res) => res.json())
-      .then((data) => {
-        setData(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Failed to fetch:', err);
-        setLoading(false);
-      });
+    fetchAccount();
   }, []);
 
   const handleSendMoney = async (e: React.FormEvent) => {
@@ -59,21 +62,38 @@ const UserDashboard: React.FC = () => {
     if (!transferAmount || !recipient) return;
     
     setIsProcessing(true);
-    setTimeout(() => {
-      if (data && data.balance >= Number(transferAmount)) {
-        setData({ ...data, balance: data.balance - Number(transferAmount) });
-        setMessage({ text: `Successfully sent ${transferAmount} DA to ${recipient}!`, type: 'success' });
-        setTimeout(() => {
-          setIsSendModalOpen(false);
-          setTransferAmount('');
-          setRecipient('');
-          setMessage(null);
-        }, 2000);
-      } else {
-        setMessage({ text: 'Insufficient balance.', type: 'error' });
-      }
+    setMessage(null);
+
+    try {
+      await apiRequest('/api/v1/transfers/p2p', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': uuidv4(),
+        },
+        body: JSON.stringify({
+          receiverAccountId: recipient, // In a real app, this might be looked up from an email/username
+          amountCentimes: Math.round(Number(transferAmount)), // Assuming transferAmount is DA
+          reference: 'DinarFlow Transfer',
+        }),
+      });
+
+      setMessage({ text: `Successfully sent ${transferAmount} DA!`, type: 'success' });
+      
+      // Refresh balance
+      await fetchAccount();
+
+      setTimeout(() => {
+        setIsSendModalOpen(false);
+        setTransferAmount('');
+        setRecipient('');
+        setMessage(null);
+      }, 2000);
+    } catch (err: any) {
+      setMessage({ text: err.message || 'Transfer failed.', type: 'error' });
+    } finally {
       setIsProcessing(false);
-    }, 1000);
+    }
   };
 
   const handleAddFunds = (e: React.FormEvent) => {

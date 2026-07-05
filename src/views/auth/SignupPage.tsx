@@ -10,7 +10,9 @@ import {
   Phone, 
   Lock, 
   CheckCircle2,
-  ShieldCheck
+  ShieldCheck,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -27,18 +29,47 @@ const SignupPage: React.FC = () => {
     businessName: '',
     agreedToTerms: false
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleNext = () => setStep(s => s + 1);
   const handleBack = () => setStep(s => s - 1);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate signup success
-    setStep(5);
-    setTimeout(() => {
-      navigate(accountType === 'merchant' ? '/merchant' : '/dashboard');
-    }, 3000);
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/v1/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          fullName: accountType === 'merchant' ? formData.businessName : formData.fullName,
+          role: accountType === 'merchant' ? 'MERCHANT' : 'USER',
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || 'Signup failed');
+      }
+
+      const { access_token } = await response.json();
+      localStorage.setItem('df_token', access_token);
+
+      setStep(5);
+      setTimeout(() => {
+        navigate(accountType === 'merchant' ? '/merchant' : '/dashboard');
+      }, 3000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderStep = () => {
@@ -244,12 +275,32 @@ const SignupPage: React.FC = () => {
                 </label>
               </div>
 
+              {error && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-2 p-3 bg-red-50 text-red-600 rounded-xl text-sm animate-shake"
+                >
+                  <AlertCircle className="w-4 h-4" />
+                  {error}
+                </motion.div>
+              )}
+
               <button
                 type="submit"
-                disabled={!formData.password || !formData.agreedToTerms}
+                disabled={!formData.password || !formData.agreedToTerms || isSubmitting}
                 className="w-full h-14 bg-gray-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-gray-800 disabled:opacity-50 transition-all shadow-xl shadow-gray-200"
               >
-                Create Account <CheckCircle2 className="w-5 h-5" />
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Creating Account...
+                  </>
+                ) : (
+                  <>
+                    Create Account <CheckCircle2 className="w-5 h-5" />
+                  </>
+                )}
               </button>
             </form>
           </motion.div>

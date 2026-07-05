@@ -22,22 +22,43 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
 
-    // Simulate login delay
-    setTimeout(() => {
-      if (formData.email === 'admin@dinarflow.dz') {
+    try {
+      const response = await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || 'Invalid email or password');
+      }
+
+      const { access_token, user } = await response.json();
+      
+      // Store token (TODO: migrate to httpOnly cookies for production)
+      localStorage.setItem('df_token', access_token);
+
+      if (user.role === 'ADMIN') {
         navigate('/admin');
-      } else if (formData.email === 'merchant@tech.dz') {
+      } else if (user.role === 'MERCHANT') {
         navigate('/merchant');
       } else {
         navigate('/dashboard');
       }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
       setIsSubmitting(false);
-    }, 2000);
+    }
   };
 
   return (
